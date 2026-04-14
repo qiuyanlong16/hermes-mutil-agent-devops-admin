@@ -120,14 +120,197 @@ class StatusChecker:
         d = profile_dir / dirname
         if not d.exists():
             return 0
+        if dirname == "sessions":
+            # Count unique session IDs (from .jsonl or session_*.json)
+            ids = set()
+            for item in d.iterdir():
+                if item.name.startswith("."):
+                    continue
+                if item.suffix == ".json" and item.stem == "sessions":
+                    continue
+                if item.suffix == ".jsonl":
+                    ids.add(item.stem)
+                elif item.suffix == ".json" and item.stem.startswith("session_"):
+                    ids.add(item.stem.replace("session_", ""))
+            return len(ids)
         count = 0
         for item in d.iterdir():
             if item.name.startswith("."):
                 continue
-            if item.is_file() and item.suffix == ".json" and item.stem == "sessions":
-                continue  # skip sessions.json meta
             count += 1
         return count
+
+    def _parse_cron_jobs(self, profile_dir: Path) -> list[dict]:
+        """Parse cron jobs from cron/jobs.json."""
+        jobs_file = profile_dir / "cron" / "jobs.json"
+        if not jobs_file.exists():
+            return []
+        try:
+            with open(jobs_file) as f:
+                data = json.load(f)
+        except Exception:
+            return []
+        result = []
+        for job in data.get("jobs", []):
+            last_run = job.get("last_run_at", "")
+            created_at = job.get("created_at", "")
+            result.append({
+                "id": job.get("id", ""),
+                "name": job.get("name", "untitled"),
+                "schedule": job.get("schedule_display") or job.get("schedule", {}).get("display", ""),
+                "enabled": job.get("enabled", False),
+                "state": job.get("state", ""),
+                "next_run": job.get("next_run_at", ""),
+                "last_run": last_run,
+                "last_status": job.get("last_status", ""),
+                "last_error": job.get("last_error", ""),
+                "created_at": created_at,
+                "model": job.get("model", ""),
+                "provider": job.get("provider", ""),
+                "repeat_times": job.get("repeat", {}).get("times"),
+                "repeat_completed": job.get("repeat", {}).get("completed", 0),
+            })
+        return result
+
+    def _list_sessions(self, profile_dir: Path) -> list[dict]:
+        """List sessions with metadata from sessions.json."""
+        sessions_dir = profile_dir / "sessions"
+        if not sessions_dir.exists():
+            return []
+        sessions_meta_file = sessions_dir / "sessions.json"
+        meta = {}
+        if sessions_meta_file.exists():
+            try:
+                with open(sessions_meta_file) as f:
+                    for line in f:
+                        try:
+                            item = json.loads(line)
+                            sid = item.get("id", "")
+                            if sid:
+                                meta[sid] = item
+                        except json.JSONDecodeError:
+                            pass
+            except Exception:
+                pass
+        # Collect unique session IDs from both .jsonl and session_*.json files
+        session_ids = set()
+        for item in sessions_dir.iterdir():
+            if not item.is_file() or item.name.startswith("."):
+                continue
+            if item.suffix == ".jsonl":
+                session_ids.add(item.stem)
+            elif item.suffix == ".json" and item.stem.startswith("session_"):
+                session_ids.add(item.stem.replace("session_", ""))
+        result = []
+        for session_id in session_ids:
+            created = session_id[:16].replace("_", " ") if len(session_id) >= 16 else session_id
+            info = meta.get(session_id, {})
+            result.append({
+                "id": session_id,
+                "created": created,
+                "title": info.get("title", ""),
+                "message_count": info.get("message_count", 0),
+            })
+        result.sort(key=lambda s: s["id"], reverse=True)
+        return result
+
+    def _list_skills(self, profile_dir: Path) -> list[dict]:
+        """List skills with metadata from SKILL.md frontmatter.
+
+        Handles two-level structure:
+          skills/github/github-auth/SKILL.md  (category/skill)
+          skills/apple/SKILL.md               (leaf skill)
+        """
+        skills_dir = profile_dir / "skills"
+        if not skills_dir.exists():
+            return []
+
+        bundled = self._parse_bundled_manifest(skills_dir)
+        result = []
+
+        for top_dir in sorted(skills_dir.iterdir()):
+            if not top_dir.is_dir() or top_dir.name.startswith("."):
+                continue
+
+            # Check if this directory has a SKILL.md (leaf skill)
+            leaf_skill = top_dir / "SKILL.md"
+            if leaf_skill.exists():
+                skill_data = self._parse_skill_file(leaf_skill)
+                skill_data["name"] = top_dir.name
+                skill_data["category"] = ""
+                skill_data["path"] = str(top_dir.relative_to(profile_dir))
+                skill_data["is_bundled"] = top_dir.name in bundled
+                result.append(skill_data)
+                continue
+
+            # Otherwise, sub-directories are actual skills
+            for sub_dir in sorted(top_dir.iterdir()):
+                if not sub_dir.is_dir() or sub_dir.name.startswith("."):
+                    continue
+                skill_file = sub_dir / "SKILL.md"
+                if not skill_file.exists():
+                    continue
+                skill_data = self._parse_skill_file(skill_file)
+                skill_data["name"] = sub_dir.name
+                skill_data["category"] = top_dir.name
+                skill_data["path"] = str(sub_dir.relative_to(profile_dir))
+                skill_data["is_bundled"] = sub_dir.name in bundled
+                result.append(skill_data)
+
+        result.sort(key=lambda s: (s["category"], s["name"]))
+        return result
+
+    def _parse_bundled_manifest(self, skills_dir: Path) -> set:
+        """Parse skills/.bundled_manifest to get set of built-in skill names."""
+        manifest = skills_dir / ".bundled_manifest"
+        if not manifest.exists():
+            return set()
+        try:
+            names = set()
+            for line in manifest.read_text().splitlines():
+                line = line.strip()
+                if line and ":" in line:
+                    names.add(line.split(":", 1)[0].strip())
+            return names
+        except Exception:
+            return set()
+
+    def _parse_skill_file(self, skill_file: Path) -> dict:
+        """Parse SKILL.md YAML frontmatter."""
+        name = ""
+        description = ""
+        tags = []
+        version = ""
+        author = ""
+        try:
+            text = skill_file.read_text(errors="replace")
+            if text.startswith("---"):
+                parts = text.split("---", 2)
+                if len(parts) >= 3:
+                    yaml_text = parts[1].strip()
+                    for line in yaml_text.splitlines():
+                        stripped = line.strip()
+                        if stripped.startswith("name:"):
+                            name = stripped.split(":", 1)[1].strip()
+                        elif stripped.startswith("description:"):
+                            description = stripped.split(":", 1)[1].strip()
+                        elif stripped.startswith("version:"):
+                            version = stripped.split(":", 1)[1].strip()
+                        elif stripped.startswith("author:"):
+                            author = stripped.split(":", 1)[1].strip()
+                        elif stripped.startswith("tags:"):
+                            tag_str = stripped.split(":", 1)[1].strip()
+                            if tag_str.startswith("[") and tag_str.endswith("]"):
+                                tags = [t.strip().strip("'\"") for t in tag_str[1:-1].split(",")]
+        except Exception:
+            pass
+        return {
+            "name": name,
+            "description": description,
+            "tags": tags,
+            "version": version,
+            "author": author,
+        }
 
     def _parse_uptime(self, profile_dir: Path) -> str:
         """Calculate uptime from gateway_state.json start_time or file mtime."""
@@ -205,12 +388,14 @@ class StatusChecker:
             "sessions": 0,
             "skills": 0,
             "uptime": "",
+            "cron_jobs": [],
         }
 
         # Count channels, sessions, skills (always available)
         result["channels"] = self._count_channels(profile_dir)
         result["sessions"] = self._count_dir_items(profile_dir, "sessions")
         result["skills"] = self._count_dir_items(profile_dir, "skills")
+        result["cron_jobs"] = self._parse_cron_jobs(profile_dir)
 
         # Try to read gateway state
         if state_file.exists():

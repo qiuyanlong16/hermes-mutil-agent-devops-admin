@@ -30,6 +30,14 @@ def _get_agents():
     return [status.get_status(p) for p in profiles]
 
 
+def _resolve_profile(profile_name: str):
+    """Return (is_main, found) tuple for a profile name."""
+    is_main = profile_name == "__main__"
+    profiles = discovery.list_profiles()
+    profile_names = {p["name"] for p in profiles}
+    return is_main, profile_name in profile_names
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -102,10 +110,8 @@ async def open_terminal(profile_name: str):
 
 @app.get("/api/logs/{profile_name}/recent")
 async def get_recent_logs(profile_name: str, log_type: str = "gateway.log"):
-    is_main = profile_name == "__main__"
-    profiles = discovery.list_profiles()
-    profile_names = {p["name"] for p in profiles}
-    if profile_name not in profile_names:
+    is_main, found = _resolve_profile(profile_name)
+    if not found:
         return JSONResponse({"error": "Profile not found"}, status_code=404)
     if log_type not in VALID_LOG_TYPES:
         return JSONResponse({"error": "Invalid log type"}, status_code=400)
@@ -116,10 +122,8 @@ async def get_recent_logs(profile_name: str, log_type: str = "gateway.log"):
 @app.get("/api/logs/{profile_name}/stream")
 async def stream_logs(profile_name: str, log_type: str = "gateway.log"):
     """SSE endpoint for live log streaming."""
-    is_main = profile_name == "__main__"
-    profiles = discovery.list_profiles()
-    profile_names = {p["name"] for p in profiles}
-    if profile_name not in profile_names:
+    is_main, found = _resolve_profile(profile_name)
+    if not found:
         return JSONResponse({"error": "Profile not found"}, status_code=404)
     if log_type not in VALID_LOG_TYPES:
         return JSONResponse({"error": "Invalid log type"}, status_code=400)
@@ -133,3 +137,29 @@ async def stream_logs(profile_name: str, log_type: str = "gateway.log"):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ── Detail Endpoints ─────────────────────────────────────────────────────
+
+@app.get("/api/agents/{profile_name}/cron")
+async def get_cron_jobs(profile_name: str):
+    is_main, found = _resolve_profile(profile_name)
+    if not found:
+        return JSONResponse({"error": "Profile not found"}, status_code=404)
+    return JSONResponse({"jobs": status._parse_cron_jobs(status._resolve_dir(profile_name, is_main))})
+
+
+@app.get("/api/agents/{profile_name}/sessions")
+async def get_sessions(profile_name: str):
+    is_main, found = _resolve_profile(profile_name)
+    if not found:
+        return JSONResponse({"error": "Profile not found"}, status_code=404)
+    return JSONResponse({"sessions": status._list_sessions(status._resolve_dir(profile_name, is_main))})
+
+
+@app.get("/api/agents/{profile_name}/skills")
+async def get_skills(profile_name: str):
+    is_main, found = _resolve_profile(profile_name)
+    if not found:
+        return JSONResponse({"error": "Profile not found"}, status_code=404)
+    return JSONResponse({"skills": status._list_skills(status._resolve_dir(profile_name, is_main))})

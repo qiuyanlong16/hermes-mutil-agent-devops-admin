@@ -45,18 +45,25 @@
     </div>
 
     <!-- Stats row -->
-    {% if agent.sessions > 0 or agent.skills > 0 %}
+    {% set api_name = "__main__" if agent.is_main else agent.name %}
+    {% if agent.sessions > 0 or agent.skills > 0 or agent.cron_jobs|length > 0 %}
     <div class="agent-stats">
         {% if agent.sessions > 0 %}
-        <div class="stat-pill">
+        <div class="stat-pill" onclick="openDetailTab('{{ api_name }}', 'sessions', event)" title="View sessions">
             <span class="stat-pill-value">{{ agent.sessions }}</span>
             <span class="stat-pill-label">sessions</span>
         </div>
         {% endif %}
         {% if agent.skills > 0 %}
-        <div class="stat-pill">
+        <div class="stat-pill" onclick="openDetailTab('{{ api_name }}', 'skills', event)" title="View skills">
             <span class="stat-pill-value">{{ agent.skills }}</span>
             <span class="stat-pill-label">skills</span>
+        </div>
+        {% endif %}
+        {% if agent.cron_jobs|length > 0 %}
+        <div class="stat-pill" onclick="openDetailTab('{{ api_name }}', 'cron', event)" title="View cron jobs">
+            <span class="stat-pill-value">{{ agent.cron_jobs|length }}</span>
+            <span class="stat-pill-label">cron</span>
         </div>
         {% endif %}
     </div>
