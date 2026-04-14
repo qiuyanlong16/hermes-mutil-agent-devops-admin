@@ -159,7 +159,12 @@ function renderDetailContent(agent, type) {
     output.innerHTML = '<div class="detail-loading">Loading...</div>';
 
     fetch(`/api/agents/${agent}/${type}`)
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}`);
+            }
+            return r.json();
+        })
         .then(data => {
             if (type === 'cron') {
                 output.innerHTML = renderCronList(data.jobs, agent);
@@ -169,8 +174,8 @@ function renderDetailContent(agent, type) {
                 output.innerHTML = renderSkillsList(data.skills, agent);
             }
         })
-        .catch(() => {
-            output.innerHTML = '<div class="detail-error">Failed to load data</div>';
+        .catch((err) => {
+            output.innerHTML = `<div class="detail-error">Failed to load ${type}: ${err.message}</div>`;
         });
 }
 

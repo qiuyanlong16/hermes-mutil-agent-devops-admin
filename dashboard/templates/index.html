@@ -65,7 +65,7 @@
                     <span id="log-agent-name" class="log-agent-name"></span>
                     <div class="log-tabs" id="log-tabs">
                         {% for lt in log_types %}
-                        <button onclick="switchTab('{{ lt }}')"
+                        <button onclick="switchTab('log-{{ lt }}')"
                                 class="log-tab {% if lt == 'gateway.log' %}active{% endif %}"
                                 data-tab-id="log-{{ lt }}">
                             {{ lt }}
