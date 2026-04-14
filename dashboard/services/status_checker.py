@@ -65,18 +65,32 @@ class StatusChecker:
                 return cleaned
         return ""
 
-    def _readable_channel_name(self, name: str, ch_type: str) -> str:
-        """Convert an opaque channel ID to a readable display name."""
+    def _readable_channel_name(self, platform: str, name: str, ch_type: str) -> str:
+        """Convert an opaque channel ID to a readable display name with platform prefix."""
+        # Platform display names
+        platform_labels = {
+            "feishu": "飞书",
+            "weixin": "微信",
+            "wecom": "企业微信",
+            "telegram": "Telegram",
+            "discord": "Discord",
+            "slack": "Slack",
+            "dingtalk": "钉钉",
+            "whatsapp": "WhatsApp",
+            "signal": "Signal",
+        }
+        prefix = platform_labels.get(platform, platform)
+
+        # If name is already readable, just prepend platform
         if name and not name.startswith("oc_") and "@" not in name:
-            return name  # already readable
-        # Fallback based on type
+            return f"{prefix}·{name}"
+
+        # Opaque ID — generate readable fallback
         if ch_type == "dm":
-            return "私聊"
+            return f"{prefix}·私聊"
         if ch_type == "group":
-            # Truncate the ID to a short suffix
-            short_id = name[-6:] if name and not name.startswith("oc_") else name.replace("oc_", "")[-6:]
-            return f"群聊#{short_id}"
-        return name
+            return f"{prefix}·群聊"
+        return f"{prefix}·{name}"
 
     def _count_channels(self, profile_dir: Path) -> dict:
         """Count connected channels from channel_directory.json."""
@@ -96,7 +110,7 @@ class StatusChecker:
                 for ch in channels:
                     name = ch.get("name", "")
                     ch_type = ch.get("type", "")
-                    display = self._readable_channel_name(name, ch_type)
+                    display = self._readable_channel_name(platform, name, ch_type)
                     names.append(display)
                     total += 1
         return {"total": total, "names": names}
