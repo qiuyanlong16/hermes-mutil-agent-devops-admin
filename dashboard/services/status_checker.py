@@ -92,6 +92,27 @@ class StatusChecker:
             return f"{prefix}·群聊"
         return f"{prefix}·{name}"
 
+    def _parse_cron_jobs(self, profile_dir: Path) -> list[dict]:
+        """Parse cron jobs from cron/jobs.json."""
+        jobs_file = profile_dir / "cron" / "jobs.json"
+        if not jobs_file.exists():
+            return []
+        try:
+            with open(jobs_file) as f:
+                data = json.load(f)
+        except Exception:
+            return []
+        result = []
+        for job in data.get("jobs", []):
+            result.append({
+                "name": job.get("name", "untitled"),
+                "schedule": job.get("schedule_display") or job.get("schedule", {}).get("display", ""),
+                "enabled": job.get("enabled", False),
+                "state": job.get("state", ""),
+                "next_run": job.get("next_run_at", ""),
+            })
+        return result
+
     def _count_channels(self, profile_dir: Path) -> dict:
         """Count connected channels from channel_directory.json."""
         ch_file = profile_dir / "channel_directory.json"
@@ -205,12 +226,14 @@ class StatusChecker:
             "sessions": 0,
             "skills": 0,
             "uptime": "",
+            "cron_jobs": [],
         }
 
         # Count channels, sessions, skills (always available)
         result["channels"] = self._count_channels(profile_dir)
         result["sessions"] = self._count_dir_items(profile_dir, "sessions")
         result["skills"] = self._count_dir_items(profile_dir, "skills")
+        result["cron_jobs"] = self._parse_cron_jobs(profile_dir)
 
         # Try to read gateway state
         if state_file.exists():

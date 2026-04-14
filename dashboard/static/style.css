@@ -412,7 +412,7 @@ body {
 
 /* ---------- Soul ---------- */
 .agent-soul {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-muted);
     font-style: italic;
     line-height: 1.4;
@@ -464,6 +464,62 @@ body {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* ---------- Cron Jobs ---------- */
+.cron-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+.cron-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 8px;
+    background-color: rgba(16, 185, 129, 0.06);
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.cron-item::before {
+    content: "⏱";
+    font-size: 10px;
+}
+
+.cron-item.cron-disabled {
+    opacity: 0.4;
+}
+
+.cron-item.cron-disabled::before {
+    content: "⏸";
+}
+
+.cron-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cron-schedule {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 10px;
+}
+
+.cron-next {
+    color: var(--status-running);
+    font-size: 10px;
+    white-space: nowrap;
 }
 
 /* ---------- Agent Actions ---------- */
