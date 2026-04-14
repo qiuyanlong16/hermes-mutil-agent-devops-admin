@@ -45,7 +45,7 @@
     </div>
 
     <!-- Stats row -->
-    {% if agent.sessions > 0 or agent.skills > 0 %}
+    {% if agent.sessions > 0 or agent.skills > 0 or agent.cron_jobs|length > 0 %}
     <div class="agent-stats">
         {% if agent.sessions > 0 %}
         <div class="stat-pill">
@@ -59,21 +59,12 @@
             <span class="stat-pill-label">skills</span>
         </div>
         {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Cron Jobs -->
-    {% if agent.cron_jobs %}
-    <div class="cron-section">
-        {% for job in agent.cron_jobs %}
-        <div class="cron-item{% if not job.enabled %} cron-disabled{% endif %}">
-            <span class="cron-name">{{ job.name }}</span>
-            <span class="cron-schedule">{{ job.schedule }}</span>
-            {% if job.next_run %}
-            <span class="cron-next">next: {{ job.next_run[11:16] }}</span>
-            {% endif %}
+        {% if agent.cron_jobs|length > 0 %}
+        <div class="stat-pill">
+            <span class="stat-pill-value">{{ agent.cron_jobs|length }}</span>
+            <span class="stat-pill-label">cron</span>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
     {% endif %}
 
