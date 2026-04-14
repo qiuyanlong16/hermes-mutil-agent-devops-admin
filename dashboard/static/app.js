@@ -2,6 +2,7 @@ let currentAgent = null;
 let currentLogType = "gateway.log";
 let eventSource = null;
 let pollTimer = null;
+let activeDetailTabs = []; // { id, agent, type, label }
 
 /* ============================================================
    Agent Actions — vanilla fetch (replaces HTMX hx-post)
@@ -19,7 +20,6 @@ async function agentAction(name, action, btnEl) {
         if (resp.ok) {
             refreshAgentList();
         } else {
-            // Server error — restore button so user can retry
             btnEl.disabled = false;
             btnEl.textContent = originalText;
             const data = await resp.json().catch(() => ({}));
@@ -52,21 +52,179 @@ function selectAgent(name, evt) {
 }
 
 /* ============================================================
-   Log Tab Switching
+   Tab Management
    ============================================================ */
 
-function selectLogTab(logType) {
+function switchTab(tabId) {
+    // tabId is like "log-gateway.log" or "detail-scheduler-pusher-cron"
+    const parts = tabId.split('-');
+    if (parts[0] === 'log') {
+        const logType = parts.slice(1).join('-');
+        activateLogTab(logType);
+    } else if (parts[0] === 'detail') {
+        const agent = parts[1];
+        const type = parts[2];
+        activateDetailTab(agent, type);
+    }
+}
+
+function activateLogTab(logType) {
     currentLogType = logType;
 
+    // Update tab styles
     document.querySelectorAll('.log-tab').forEach(tab => {
-        if (tab.dataset.logType === logType) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
-        }
+        tab.classList.toggle('active', tab.dataset.tabId === `log-${logType}`);
     });
 
+    // Show log output, hide detail output
+    document.getElementById('log-output').classList.remove('hidden');
+    document.getElementById('detail-output').classList.add('hidden');
+
     startLogStream();
+}
+
+function activateDetailTab(agent, type) {
+    // Update tab styles
+    document.querySelectorAll('.log-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tabId === `detail-${agent}-${type}`);
+    });
+
+    // Show detail output, hide log output
+    document.getElementById('detail-output').classList.remove('hidden');
+    document.getElementById('log-output').classList.add('hidden');
+
+    // Close SSE if open
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+    }
+
+    // Fetch and render detail content
+    renderDetailContent(agent, type);
+}
+
+/* ============================================================
+   Detail Tab: Open / Close / Render
+   ============================================================ */
+
+function openDetailTab(agent, type, evt) {
+    evt.stopPropagation();
+
+    const tabId = `detail-${agent}-${type}`;
+
+    // Check if tab already exists
+    if (activeDetailTabs.find(t => t.id === tabId)) {
+        switchTab(tabId);
+        return;
+    }
+
+    const labels = { cron: 'cron', sessions: 'sessions', skills: 'skills' };
+    const label = labels[type] || type;
+
+    // Add tab button
+    const tabsContainer = document.getElementById('log-tabs');
+    const btn = document.createElement('button');
+    btn.className = 'log-tab active';
+    btn.dataset.tabId = tabId;
+    btn.innerHTML = `${label} <span class="tab-close" onclick="closeDetailTab('${agent}', '${type}', event)">&times;</span>`;
+    btn.onclick = () => switchTab(tabId);
+    tabsContainer.appendChild(btn);
+
+    // Track tab
+    activeDetailTabs.push({ id: tabId, agent, type });
+
+    // Activate this tab
+    switchTab(tabId);
+}
+
+function closeDetailTab(agent, type, evt) {
+    evt.stopPropagation();
+    const tabId = `detail-${agent}-${type}`;
+
+    // Remove tab button
+    const tabBtn = document.querySelector(`[data-tab-id="${tabId}"]`);
+    if (tabBtn) tabBtn.remove();
+
+    // Remove from tracking
+    activeDetailTabs = activeDetailTabs.filter(t => t.id !== tabId);
+
+    // If this was the active tab, switch to gateway.log
+    if (tabBtn && tabBtn.classList.contains('active')) {
+        activateLogTab('gateway.log');
+    }
+}
+
+function renderDetailContent(agent, type) {
+    const output = document.getElementById('detail-output');
+    output.innerHTML = '<div class="detail-loading">Loading...</div>';
+
+    fetch(`/api/agents/${agent}/${type}`)
+        .then(r => r.json())
+        .then(data => {
+            if (type === 'cron') {
+                output.innerHTML = renderCronList(data.jobs, agent);
+            } else if (type === 'sessions') {
+                output.innerHTML = renderSessionList(data.sessions, agent);
+            } else if (type === 'skills') {
+                output.innerHTML = renderSkillsList(data.skills, agent);
+            }
+        })
+        .catch(() => {
+            output.innerHTML = '<div class="detail-error">Failed to load data</div>';
+        });
+}
+
+function renderCronList(jobs, agent) {
+    if (!jobs || jobs.length === 0) {
+        return '<div class="detail-empty">No cron jobs configured</div>';
+    }
+    let html = `<div class="detail-header">${agent} — Cron Jobs (${jobs.length})</div>`;
+    html += '<div class="detail-list">';
+    for (const job of jobs) {
+        const enabledClass = job.enabled ? '' : ' disabled';
+        const stateLabel = job.state || '';
+        const nextRun = job.next_run ? ` · next: ${job.next_run.split('T')[1]?.substring(0, 5) || job.next_run}` : '';
+        html += `<div class="detail-item${enabledClass}">
+            <span class="detail-item-name">${escapeHtml(job.name)}</span>
+            <span class="detail-item-meta">${escapeHtml(job.schedule)}${nextRun}</span>
+            <span class="detail-item-state">${stateLabel}</span>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+function renderSessionList(sessions, agent) {
+    if (!sessions || sessions.length === 0) {
+        return '<div class="detail-empty">No sessions found</div>';
+    }
+    let html = `<div class="detail-header">${agent} — Sessions (${sessions.length})</div>`;
+    html += '<div class="detail-list">';
+    for (const s of sessions) {
+        const msgLabel = s.message_count > 0 ? `${s.message_count} msgs` : '';
+        html += `<div class="detail-item">
+            <span class="detail-item-name">${escapeHtml(s.title || s.id)}</span>
+            <span class="detail-item-meta">${escapeHtml(s.created)}</span>
+            <span class="detail-item-state">${msgLabel}</span>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+function renderSkillsList(skills, agent) {
+    if (!skills || skills.length === 0) {
+        return '<div class="detail-empty">No skills found</div>';
+    }
+    let html = `<div class="detail-header">${agent} — Skills (${skills.length})</div>`;
+    html += '<div class="detail-list">';
+    for (const name of skills) {
+        html += `<div class="detail-item">
+            <span class="detail-item-name">${escapeHtml(name)}</span>
+        </div>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 /* ============================================================
@@ -141,7 +299,7 @@ function escapeHtml(text) {
 }
 
 /* ============================================================
-   Agent List Polling (replaces HTMX hx-get every 5s)
+   Agent List Polling
    ============================================================ */
 
 async function refreshAgentList() {
@@ -152,7 +310,7 @@ async function refreshAgentList() {
         if (agentList) {
             agentList.innerHTML = html;
 
-            // Re-highlight selected agent if present
+            // Re-highlight selected agent
             if (currentAgent) {
                 const cards = agentList.querySelectorAll('.agent-card');
                 cards.forEach(card => {
@@ -168,15 +326,8 @@ async function refreshAgentList() {
     }
 }
 
-// Start 5-second polling
 function startPolling() {
     pollTimer = setInterval(refreshAgentList, 5000);
-}
-
-// Update stats in header after refresh
-function updateStats() {
-    // Stats are rendered server-side; they get refreshed on full page reload
-    // The poll refreshes only agent cards, so stats stay in sync on initial render
 }
 
 // Boot

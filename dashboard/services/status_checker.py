@@ -120,14 +120,99 @@ class StatusChecker:
         d = profile_dir / dirname
         if not d.exists():
             return 0
+        if dirname == "sessions":
+            # Count unique session IDs (from .jsonl or session_*.json)
+            ids = set()
+            for item in d.iterdir():
+                if item.name.startswith("."):
+                    continue
+                if item.suffix == ".json" and item.stem == "sessions":
+                    continue
+                if item.suffix == ".jsonl":
+                    ids.add(item.stem)
+                elif item.suffix == ".json" and item.stem.startswith("session_"):
+                    ids.add(item.stem.replace("session_", ""))
+            return len(ids)
         count = 0
         for item in d.iterdir():
             if item.name.startswith("."):
                 continue
-            if item.is_file() and item.suffix == ".json" and item.stem == "sessions":
-                continue  # skip sessions.json meta
             count += 1
         return count
+
+    def _parse_cron_jobs(self, profile_dir: Path) -> list[dict]:
+        """Parse cron jobs from cron/jobs.json."""
+        jobs_file = profile_dir / "cron" / "jobs.json"
+        if not jobs_file.exists():
+            return []
+        try:
+            with open(jobs_file) as f:
+                data = json.load(f)
+        except Exception:
+            return []
+        result = []
+        for job in data.get("jobs", []):
+            result.append({
+                "id": job.get("id", ""),
+                "name": job.get("name", "untitled"),
+                "schedule": job.get("schedule_display") or job.get("schedule", {}).get("display", ""),
+                "enabled": job.get("enabled", False),
+                "state": job.get("state", ""),
+                "next_run": job.get("next_run_at", ""),
+            })
+        return result
+
+    def _list_sessions(self, profile_dir: Path) -> list[dict]:
+        """List sessions with metadata from sessions.json."""
+        sessions_dir = profile_dir / "sessions"
+        if not sessions_dir.exists():
+            return []
+        sessions_meta_file = sessions_dir / "sessions.json"
+        meta = {}
+        if sessions_meta_file.exists():
+            try:
+                with open(sessions_meta_file) as f:
+                    for line in f:
+                        try:
+                            item = json.loads(line)
+                            sid = item.get("id", "")
+                            if sid:
+                                meta[sid] = item
+                        except json.JSONDecodeError:
+                            pass
+            except Exception:
+                pass
+        # Collect unique session IDs from both .jsonl and session_*.json files
+        session_ids = set()
+        for item in sessions_dir.iterdir():
+            if not item.is_file() or item.name.startswith("."):
+                continue
+            if item.suffix == ".jsonl":
+                session_ids.add(item.stem)
+            elif item.suffix == ".json" and item.stem.startswith("session_"):
+                session_ids.add(item.stem.replace("session_", ""))
+        result = []
+        for session_id in session_ids:
+            created = session_id[:16].replace("_", " ") if len(session_id) >= 16 else session_id
+            info = meta.get(session_id, {})
+            result.append({
+                "id": session_id,
+                "created": created,
+                "title": info.get("title", ""),
+                "message_count": info.get("message_count", 0),
+            })
+        result.sort(key=lambda s: s["id"], reverse=True)
+        return result
+
+    def _list_skills(self, profile_dir: Path) -> list[str]:
+        """List skill directory names."""
+        skills_dir = profile_dir / "skills"
+        if not skills_dir.exists():
+            return []
+        return sorted(
+            d.name for d in skills_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(".")
+        )
 
     def _parse_uptime(self, profile_dir: Path) -> str:
         """Calculate uptime from gateway_state.json start_time or file mtime."""
@@ -205,12 +290,14 @@ class StatusChecker:
             "sessions": 0,
             "skills": 0,
             "uptime": "",
+            "cron_jobs": [],
         }
 
         # Count channels, sessions, skills (always available)
         result["channels"] = self._count_channels(profile_dir)
         result["sessions"] = self._count_dir_items(profile_dir, "sessions")
         result["skills"] = self._count_dir_items(profile_dir, "skills")
+        result["cron_jobs"] = self._parse_cron_jobs(profile_dir)
 
         # Try to read gateway state
         if state_file.exists():

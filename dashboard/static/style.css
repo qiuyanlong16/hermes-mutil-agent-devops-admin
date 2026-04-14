@@ -466,6 +466,120 @@ body {
     letter-spacing: 0.05em;
 }
 
+.stat-pill {
+    cursor: pointer;
+}
+
+.stat-pill:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* ---------- Tab Close Button ---------- */
+.tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 4px;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--text-muted);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.tab-close:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Detail Output ---------- */
+.detail-output {
+    height: 100%;
+    overflow: auto;
+    font-size: 12px;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 16px;
+}
+
+.detail-output.hidden {
+    display: none;
+}
+
+.detail-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    border-left: 2px solid var(--accent);
+}
+
+.detail-item.disabled {
+    opacity: 0.4;
+    border-left-color: var(--text-muted);
+}
+
+.detail-item-name {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.detail-item-meta {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.detail-item-state {
+    font-size: 10px;
+    color: var(--status-running);
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: right;
+}
+
+.detail-loading,
+.detail-empty,
+.detail-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.detail-error {
+    color: #f87171;
+}
+
 /* ---------- Agent Actions ---------- */
 .agent-actions {
     display: flex;
