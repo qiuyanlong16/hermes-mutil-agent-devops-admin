@@ -582,6 +582,33 @@ body {
 
 /* ---------- Skills: Card Grid Layout (Nous Research Skills Hub style) ---------- */
 
+/* Category signature colors for left border accents */
+.skill-card[data-category="social-media"] { border-left: 4px solid #1DA1F2; }
+.skill-card[data-category="github"] { border-left: 4px solid #6e7681; }
+.skill-card[data-category="creative"] { border-left: 4px solid #E040FB; }
+.skill-card[data-category="research"] { border-left: 4px solid #00BCD4; }
+.skill-card[data-category="software-development"] { border-left: 4px solid #4CAF50; }
+.skill-card[data-category="autonomous-ai-agents"] { border-left: 4px solid #7C4DFF; }
+.skill-card[data-category="mlops"] { border-left: 4px solid #FF6D00; }
+.skill-card[data-category="productivity"] { border-left: 4px solid #00BFA5; }
+.skill-card[data-category="devops"] { border-left: 4px solid #FF5252; }
+.skill-card[data-category="data-science"] { border-left: 4px solid #304FFE; }
+.skill-card[data-category="smart-home"] { border-left: 4px solid #FFAB40; }
+.skill-card[data-category="media"] { border-left: 4px solid #F44336; }
+.skill-card[data-category="email"] { border-left: 4px solid #EA4335; }
+.skill-card[data-category="gaming"] { border-left: 4px solid #64DD17; }
+.skill-card[data-category="note-taking"] { border-left: 4px solid #AB47BC; }
+.skill-card[data-category="mcp"] { border-left: 4px solid #26A69A; }
+.skill-card[data-category="leisure"] { border-left: 4px solid #FF7043; }
+.skill-card[data-category="red-teaming"] { border-left: 4px solid #EF5350; }
+.skill-card[data-category="apple"] { border-left: 4px solid #A2AAAD; }
+.skill-card[data-category="dogfood"] { border-left: 4px solid #FF8A65; }
+.skill-card[data-category=""] { border-left: 4px solid #78909C; }
+.skill-card:hover {
+    border-color: #2a3f6a;
+    border-left-color: transparent;
+}
+
 .skills-container {
     display: flex;
     flex-direction: column;
@@ -615,16 +642,18 @@ body {
     flex-direction: column;
     gap: 8px;
     padding: 14px;
+    padding-left: 10px;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border);
+    border-left-width: 4px;
     border-radius: 8px;
     transition: all 0.15s ease;
     min-height: 100px;
+    position: relative;
 }
 
 .skill-card:hover {
     background-color: var(--bg-card-hover);
-    border-color: #2a3f6a;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -634,6 +663,39 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    padding-right: 4px;
+}
+
+.skill-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.025em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.skill-badge {
+    padding: 1px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.skill-badge-builtin {
+    color: #34d399;
+    background-color: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.skill-badge-installed {
+    color: #60a5fa;
+    background-color: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .skill-card-name {

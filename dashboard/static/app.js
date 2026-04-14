@@ -280,10 +280,11 @@ function renderSkillsList(skills, agent) {
         html += '<div class="skills-grid">';
 
         for (const skill of catSkills) {
-            html += `<div class="skill-card">`;
+            html += `<div class="skill-card" data-category="${escapeHtml(skill.category)}">`;
             // Skill header
             html += `<div class="skill-card-header">`;
             html += `<span class="skill-card-name">${escapeHtml(skill.name)}</span>`;
+            html += `<span class="skill-badge ${skill.is_bundled ? 'skill-badge-builtin' : 'skill-badge-installed'}">${skill.is_bundled ? 'Builtin' : 'Installed'}</span>`;
             if (skill.version) {
                 html += `<span class="skill-card-version">${escapeHtml(skill.version)}</span>`;
             }

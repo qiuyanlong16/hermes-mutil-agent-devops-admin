@@ -224,6 +224,8 @@ class StatusChecker:
         skills_dir = profile_dir / "skills"
         if not skills_dir.exists():
             return []
+
+        bundled = self._parse_bundled_manifest(skills_dir)
         result = []
 
         for top_dir in sorted(skills_dir.iterdir()):
@@ -237,6 +239,7 @@ class StatusChecker:
                 skill_data["name"] = top_dir.name
                 skill_data["category"] = ""
                 skill_data["path"] = str(top_dir.relative_to(profile_dir))
+                skill_data["is_bundled"] = top_dir.name in bundled
                 result.append(skill_data)
                 continue
 
@@ -251,10 +254,26 @@ class StatusChecker:
                 skill_data["name"] = sub_dir.name
                 skill_data["category"] = top_dir.name
                 skill_data["path"] = str(sub_dir.relative_to(profile_dir))
+                skill_data["is_bundled"] = sub_dir.name in bundled
                 result.append(skill_data)
 
         result.sort(key=lambda s: (s["category"], s["name"]))
         return result
+
+    def _parse_bundled_manifest(self, skills_dir: Path) -> set:
+        """Parse skills/.bundled_manifest to get set of built-in skill names."""
+        manifest = skills_dir / ".bundled_manifest"
+        if not manifest.exists():
+            return set()
+        try:
+            names = set()
+            for line in manifest.read_text().splitlines():
+                line = line.strip()
+                if line and ":" in line:
+                    names.add(line.split(":", 1)[0].strip())
+            return names
+        except Exception:
+            return set()
 
     def _parse_skill_file(self, skill_file: Path) -> dict:
         """Parse SKILL.md YAML frontmatter."""
