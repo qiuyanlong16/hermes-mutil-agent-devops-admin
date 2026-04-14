@@ -1,0 +1,46 @@
+<div class="agent-card mb-3 bg-gray-800 rounded-lg border border-gray-700 p-4 cursor-pointer transition hover:border-gray-600"
+     onclick="selectAgent('{{ agent.name }}')">
+    <div class="flex items-center justify-between mb-2">
+        <span class="font-medium text-white">{{ agent.name }}</span>
+        <span class="status-badge px-2 py-0.5 text-xs rounded-full
+                     {% if agent.running %}bg-green-900 text-green-300{% else %}bg-red-900 text-red-300{% endif %}">
+            {% if agent.running %}running{% else %}stopped{% endif %}
+        </span>
+    </div>
+    <div class="text-xs text-gray-400 space-y-1">
+        <div>Model: <span class="text-gray-300">{{ agent.model }}</span></div>
+        {% if agent.pid %}
+        <div>PID: <span class="text-gray-300">{{ agent.pid }}</span></div>
+        {% endif %}
+        <div>Agents active: <span class="text-gray-300">{{ agent.active_agents }}</span></div>
+        {% if agent.feishu_connected %}
+        <div class="text-green-400">Feishu connected</div>
+        {% else %}
+        <div class="text-gray-500">Feishu not connected</div>
+        {% endif %}
+    </div>
+    <div class="flex gap-2 mt-3 pt-3 border-t border-gray-700" onclick="event.stopPropagation()">
+        {% if not agent.running %}
+        <button hx-post="/api/agents/{{ agent.name }}/start"
+                hx-on::after-request="refreshAgentList()"
+                class="flex-1 px-2 py-1 text-xs bg-green-700 hover:bg-green-600 rounded transition">
+            Start
+        </button>
+        {% else %}
+        <button hx-post="/api/agents/{{ agent.name }}/stop"
+                hx-on::after-request="refreshAgentList()"
+                class="flex-1 px-2 py-1 text-xs bg-yellow-700 hover:bg-yellow-600 rounded transition">
+            Stop
+        </button>
+        <button hx-post="/api/agents/{{ agent.name }}/restart"
+                hx-on::after-request="refreshAgentList()"
+                class="flex-1 px-2 py-1 text-xs bg-blue-700 hover:bg-blue-600 rounded transition">
+            Restart
+        </button>
+        {% endif %}
+        <button hx-post="/api/agents/{{ agent.name }}/open-terminal"
+                class="flex-1 px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition">
+            Terminal
+        </button>
+    </div>
+</div>

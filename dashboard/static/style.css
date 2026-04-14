@@ -1,0 +1,49 @@
+/* Custom styles for Hermes Dashboard */
+
+.log-line {
+    line-height: 1.5;
+}
+
+.log-line:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Smooth scroll for log output */
+#log-output {
+    scroll-behavior: smooth;
+}
+
+/* Card hover effect */
+.agent-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Status badge pulse for running agents */
+.status-badge.bg-green-900 {
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1a2e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4a4a6a;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6a6a8a;
+}
