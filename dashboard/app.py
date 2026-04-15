@@ -106,6 +106,17 @@ async def open_terminal(profile_name: str):
     return JSONResponse(result)
 
 
+@app.post("/api/agents/{profile_name}/open-db")
+async def open_db(profile_name: str):
+    is_main = profile_name == "__main__"
+    profiles = discovery.list_profiles()
+    profile_names = {p["name"] for p in profiles}
+    if profile_name not in profile_names:
+        return JSONResponse({"error": "Profile not found"}, status_code=404)
+    result = control.open_db(profile_name, is_main)
+    return JSONResponse(result)
+
+
 # ── Log Endpoints ──────────────────────────────────────────────────────────
 
 @app.get("/api/logs/{profile_name}/recent")

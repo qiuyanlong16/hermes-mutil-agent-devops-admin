@@ -18,7 +18,17 @@ async function agentAction(name, action, btnEl) {
             method: 'POST',
         });
         if (resp.ok) {
-            refreshAgentList();
+            // Actions that don't change agent state don't need a full list refresh
+            const noRefreshActions = ['open-terminal', 'open-db'];
+            if (noRefreshActions.includes(action)) {
+                // Brief visual feedback: show checkmark then restore
+                btnEl.innerHTML = '&#10003;';
+                await new Promise(r => setTimeout(r, 800));
+                btnEl.textContent = originalText;
+                btnEl.disabled = false;
+            } else {
+                refreshAgentList();
+            }
         } else {
             btnEl.disabled = false;
             btnEl.textContent = originalText;

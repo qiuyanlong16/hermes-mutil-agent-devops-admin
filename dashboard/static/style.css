@@ -839,6 +839,14 @@ body {
     opacity: 0.6;
 }
 
+.btn-db {
+    background: #7c3aed;
+    color: #ede9fe;
+}
+.btn-db:hover:not(:disabled) {
+    background: #6d28d9;
+}
+
 /* ---------- Right Panel: Log Viewer ---------- */
 .panel-right {
     flex: 1;

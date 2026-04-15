@@ -92,6 +92,23 @@ class ProcessControl:
             cmd = "hermes gateway run"
         else:
             cmd = f"hermes -p {profile_name} gateway run"
+    def open_db(self, profile_name: str, is_main: bool = False) -> dict:
+        """Open state.db in sqlitebrowser (Linux only)."""
+        import platform
+        if platform.system() == "Windows":
+            return {"success": False, "message": "Not available on Windows"}
+        db_path = self._resolve_dir(profile_name, is_main) / "state.db"
+        if not db_path.exists():
+            return {"success": False, "message": "state.db not found"}
+        if not shutil.which("sqlitebrowser"):
+            return {"success": False, "message": "sqlitebrowser not installed. Please install it: sudo apt install sqlitebrowser"}
+        try:
+            subprocess.Popen(["sqlitebrowser", str(db_path)])
+            label = profile_name if not is_main else "main"
+            return {"success": True, "message": f"Opened database for {label}"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
         terminals = [
             ["gnome-terminal", "--", "bash", "-c", cmd],
             ["konsole", "-e", "bash", "-c", cmd],
